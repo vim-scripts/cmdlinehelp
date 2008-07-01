@@ -4,18 +4,18 @@
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     2008-07-01.
 " @Last Change: 2008-07-01.
-" @Revision:    0.2.153
+" @Revision:    192
 " GetLatestVimScripts: 2279 0 cmdlinehelp.vim
 
 " :doc:
 " NOTE:
-" - This plugin works be temporarily setting &l:tags. I hope but I am 
-"   not sure that this doesn't interfere with anything else.
+" - This plugin temporarily sets &l:tags to g:cmdlinehelpTags. I hope 
+"   this doesn't interfere with anything else.
 
 if &cp || exists("loaded_cmdlinehelp")
     finish
 endif
-let loaded_cmdlinehelp = 2
+let loaded_cmdlinehelp = 3
 
 let s:save_cpo = &cpo
 set cpo&vim
@@ -23,6 +23,7 @@ set cpo&vim
 if !exists('g:cmdlinehelpMapView')
     " Default map.
     let g:cmdlinehelpMapView = '<c-o>'  "{{{2
+    " let g:cmdlinehelpMapView = '<c-]>'  "{{{2
 endif
 
 if !exists('g:cmdlinehelpMapDown')
@@ -47,10 +48,24 @@ if !exists('g:cmdlinehelpTable')
     " A table of tags that should be displayed instead of the default 
     " tag. This only works for exact matches.
     " :nodefault:
-    " :read: let g:cmdlinehelpTable = "{{{2
+    " :read: let g:cmdlinehelpTable = {} "{{{2
     let g:cmdlinehelpTable = {
                 \ ':s': ':s_flags'
                 \ }
+endif
+
+if !exists('g:cmdlinehelpPrefixes')
+    " If a tag with one of these prefixes is found, that one will be 
+    " used instead of the default prefix. This should make it quite easy 
+    " to use nicely formatted cheat sheets without interfering with the 
+    " normal vim help. Simply save your cheat sheet to ~/vimfiles/doc/, 
+    " tag the entries with a prefix (e.g. "cheat::edit" for ":edit") and 
+    " run |:helptags|.
+    " :nodefault:
+    " :read: let g:cmdlinehelpPrefixes = {}   "{{{2
+    let g:cmdlinehelpPrefixes = [
+                \ 'cheat:',
+                \ ]
 endif
 
 
@@ -64,12 +79,25 @@ let s:ignore = 0
 function! CmdLineHelpView() "{{{3
     let cmd = matchstr(s:buffer, '\('. g:cmdlinehelpIgnore .'\)\?\W*\s*\zs\w\+')
     if !empty(cmd)
-        let cmd = ':'. cmd
-        let cmd = get(g:cmdlinehelpTable, cmd, cmd)
         let tags = &l:tags
         let &tags = g:cmdlinehelpTags
         try
+            let cmd = ':' . cmd
+            let ok = 0
+            for prefix in g:cmdlinehelpPrefixes
+                let cmd1 = prefix . cmd
+                let tag = taglist('^'. cmd1 .'$')
+                if !empty(tag)
+                    let cmd = cmd1
+                    let ok = 1
+                    break
+                endif
+            endfor
+            if !ok
+                let cmd = get(g:cmdlinehelpTable, cmd, cmd)
+            endif
             exec 'ptag '. cmd
+            call s:NormInPreview("jzt")
             call s:InstallAutoHide()
         finally
             let &l:tags = tags
@@ -81,7 +109,7 @@ endf
 
 
 function! s:RestoreCmdLine() "{{{3
-    call feedkeys(':'. s:buffer ."\<HOME>". repeat("\<RIGHT>", s:pos - 1))
+    call feedkeys(':'. s:buffer ."\<Home>". repeat("\<Right>", s:pos - 1))
 endf
 
 
@@ -94,17 +122,17 @@ endf
 
 
 function! s:InstallAutoHide() "{{{3
-    autocmd CmdLineHelp CursorHold,CursorHoldI,CursorMovedI,InsertEnter * call s:CmdLineHelpClose()
+    autocmd CmdLineHelp CursorHold,CursorHoldI,CursorMovedI,InsertEnter,BufWinEnter * call s:CmdLineHelpClose()
 endf
 
 
 function! s:RemoveAutoHide() "{{{3
-    autocmd! CmdLineHelp CursorHold,CursorHoldI,CursorMovedI,InsertEnter
+    autocmd! CmdLineHelp CursorHold,CursorHoldI,CursorMovedI,InsertEnter,BufWinEnter
 endf
 
 
 function! s:CmdLineHelpClose() "{{{3
-    if !s:ignore
+    if !s:ignore && !&previewwindow
         pclose!
         call s:RemoveAutoHide()
     end
@@ -139,10 +167,10 @@ if !hasmapto('CmdLineHelpView', 'c')
     exec 'cnoremap '. g:cmdlinehelpMapView .' <c-\>eCmdLineHelpBuffer()<cr><c-c>:call CmdLineHelpView()<cr>'
 end
 if !hasmapto('CmdLineHelpUp', 'c')
-    exec 'cnoremap '. g:cmdlinehelpMapUp .' <c-\>eCmdLineHelpBuffer()<cr><c-c>:call CmdLineHelpUp()<cr>'
+    exec 'cnoremap <silent> '. g:cmdlinehelpMapUp .' <c-\>eCmdLineHelpBuffer()<cr><c-c>:call CmdLineHelpUp()<cr>'
 end
 if !hasmapto('CmdLineHelpDown', 'c')
-    exec 'cnoremap '. g:cmdlinehelpMapDown .' <c-\>eCmdLineHelpBuffer()<cr><c-c>:call CmdLineHelpDown()<cr>'
+    exec 'cnoremap <silent> '. g:cmdlinehelpMapDown .' <c-\>eCmdLineHelpBuffer()<cr><c-c>:call CmdLineHelpDown()<cr>'
 end
 
 if &cpoptions !~# 'x'
@@ -168,4 +196,8 @@ CHANGES:
 0.2
 - g:cmdlinehelpTable
 - FIX: wrong window after scrolling
+
+0.3
+- Preferred prefixes: g:cmdlinehelpPrefixes
+- Display the help on the top of the preview window
 

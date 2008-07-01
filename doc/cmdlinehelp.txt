@@ -2,11 +2,11 @@
                     Author: Thomas Link, micathom at gmail com
                     
 When editing a command line, press <c-o> (see also |g:cmdlinehelpMapView|) 
-to display on the command currently being edited.
+to display help on the command currently being edited.
 
 Use <c-pageup>/<c-pagedown> to scroll the help window.
 
-This plugin was inspired by an post by Marcel Boon to vim_use:
+This plugin was inspired by a post by Marcel Boon to vim_use:
 http://groups.google.com/group/vim_use/browse_frm/thread/aaa3d652d7b76d02
 
 
@@ -32,6 +32,7 @@ Contents~
         g:cmdlinehelpIgnore ...... |g:cmdlinehelpIgnore|
         g:cmdlinehelpTags ........ |g:cmdlinehelpTags|
         g:cmdlinehelpTable ....... |g:cmdlinehelpTable|
+        g:cmdlinehelpPrefixes .... |g:cmdlinehelpPrefixes|
         CmdLineHelpView .......... |CmdLineHelpView()|
         CmdLineHelpBuffer ........ |CmdLineHelpBuffer()|
         CmdLineHelpDown .......... |CmdLineHelpDown()|
@@ -43,8 +44,8 @@ plugin/cmdlinehelp.vim~
 
 
 NOTE:
-- This plugin works be temporarily setting &l:tags. I hope but I am 
-  not sure that this doesn't interfere with anything else.
+- This plugin temporarily sets &l:tags to g:cmdlinehelpTags. I hope 
+  this doesn't interfere with anything else.
 
                                                     *g:cmdlinehelpMapView*
 g:cmdlinehelpMapView           (default: '<c-o>')
@@ -69,6 +70,15 @@ g:cmdlinehelpTable
     A table of tags that should be displayed instead of the default 
     tag. This only works for exact matches.
 
+                                                    *g:cmdlinehelpPrefixes*
+g:cmdlinehelpPrefixes
+    If a tag with one of these prefixes is found, that one will be 
+    used instead of the default prefix. This should make it quite easy 
+    to use nicely formatted cheat sheets without interfering with the 
+    normal vim help. Simply save your cheat sheet to ~/vimfiles/doc/, 
+    tag the entries with a prefix (e.g. "cheat::edit" for ":edit") and 
+    run |:helptags|.
+
                                                     *CmdLineHelpView()*
 CmdLineHelpView()
     Find help for the first "interesting" command on the current command line.
@@ -84,3 +94,5 @@ CmdLineHelpDown()
 CmdLineHelpUp()
 
 
+
+vim:tw=78:fo=tcq2:isk=!-~,^*,^|,^":ts=8:ft=help:norl:
