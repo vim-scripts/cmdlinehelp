@@ -1,0 +1,14 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=2279
+
+Has this ever happened to you? You are typing a command and cannot remember 
+whether that particular option is an "u" or an "o". cmdlinehelp to the 
+rescue!
+
+When editing a command line, press <c-o> (see also |g:cmdlinehelpMapView|) 
+to display help on the command currently being edited.
+
+Use <c-pageup>/<c-pagedown> to scroll the help window.
+
+This plugin was inspired by a post by Marcel Boon to vim_use:
+http://groups.google.com/group/vim_use/browse_frm/thread/aaa3d652d7b76d02
+
