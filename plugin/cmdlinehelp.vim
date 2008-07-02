@@ -3,8 +3,8 @@
 " @Website:     http://www.vim.org/account/profile.php?user_id=4037
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     2008-07-01.
-" @Last Change: 2008-07-01.
-" @Revision:    192
+" @Last Change: 2008-07-02.
+" @Revision:    245
 " GetLatestVimScripts: 2279 0 cmdlinehelp.vim
 
 " :doc:
@@ -15,7 +15,7 @@
 if &cp || exists("loaded_cmdlinehelp")
     finish
 endif
-let loaded_cmdlinehelp = 3
+let loaded_cmdlinehelp = 4
 
 let s:save_cpo = &cpo
 set cpo&vim
@@ -36,7 +36,23 @@ endif
 
 if !exists('g:cmdlinehelpIgnore')
     " Uninteresting stuff that should be ignored when searching for a command.
-    let g:cmdlinehelpIgnore = 'sil\%[ent]\|verb\%[ose]' "{{{2
+    let g:cmdlinehelpIgnore = 'sil\%[ent]\|verb\%[ose]\|debug' "{{{2
+endif
+
+if !exists('g:cmdlinehelpPatterns')
+    " A dictionary of line patters for extracting the tag from the 
+    " command line and format strings for formatting the tag. This is 
+    " used for, e.g., the |:set| command to show help on the option but 
+    " not on the command.
+    " :nodefault:
+    " :read: let g:cmdlinehelpPatterns = {}   "{{{2
+    let g:cmdlinehelpPatterns = {
+                \ 'set\?\s\+\zs\w\+': "'%s'",
+                \ 'setl\%[ocal]\s\+\zs\w\+': "'%s'",
+                \ 'let\s\+&l:\zs[^=[:space:]]\+': "'%s'",
+                \ 'let\s\+&\zs[^=[:space:]]\+': "'%s'",
+                \ 'let\s\+\zs[^=[:space:]]\+': "%s",
+                \ }
 endif
 
 if !exists('g:cmdlinehelpTags')
@@ -77,28 +93,44 @@ let s:ignore = 0
 
 " Find help for the first "interesting" command on the current command line.
 function! CmdLineHelpView() "{{{3
-    let cmd = matchstr(s:buffer, '\('. g:cmdlinehelpIgnore .'\)\?\W*\s*\zs\w\+')
-    if !empty(cmd)
+    " call TLogDBG(s:buffer)
+    let ok = 0
+    for [cpat, fmt] in items(g:cmdlinehelpPatterns)
+        let tag = matchstr(s:buffer, '\(\('. g:cmdlinehelpIgnore .'\)\W*\s*\)*'. cpat)
+        " TLogVAR tag, cpat, fmt
+        if !empty(tag)
+            let ok = 1
+            break
+        endif
+    endfor
+    if !ok
+        let tag = matchstr(s:buffer, '\(\('. g:cmdlinehelpIgnore .'\)\W*\s*\)*\zs\w\+')
+        let fmt = ':%s'
+    endif
+    " TLogVAR tag, fmt
+
+    if !empty(tag)
         let tags = &l:tags
         let &tags = g:cmdlinehelpTags
         try
-            let cmd = ':' . cmd
+            let tag = printf(fmt, tag)
             let ok = 0
             for prefix in g:cmdlinehelpPrefixes
-                let cmd1 = prefix . cmd
-                let tag = taglist('^'. cmd1 .'$')
-                if !empty(tag)
-                    let cmd = cmd1
+                let tag1 = prefix . tag
+                let taglist = taglist('^'. tag1 .'$')
+                if !empty(taglist)
+                    let tag = tag1
                     let ok = 1
                     break
                 endif
             endfor
             if !ok
-                let cmd = get(g:cmdlinehelpTable, cmd, cmd)
+                let tag = get(g:cmdlinehelpTable, tag, tag)
             endif
-            exec 'ptag '. cmd
+            exec 'ptag '. tag
             call s:NormInPreview("jzt")
             call s:InstallAutoHide()
+        catch /^Vim\%((\a\+)\)\=:E426/
         finally
             let &l:tags = tags
         endtry
@@ -200,4 +232,9 @@ CHANGES:
 0.3
 - Preferred prefixes: g:cmdlinehelpPrefixes
 - Display the help on the top of the preview window
+
+0.4
+- For :set, :setlocal, :let show help on the option/variable, not the command
+- Catch e426 error.
+- Added debug to g:cmdlinehelpIgnore
 

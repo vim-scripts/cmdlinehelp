@@ -1,6 +1,10 @@
 *cmdlinehelp.txt*   Display help on the command in the command line
                     Author: Thomas Link, micathom at gmail com
-                    
+
+Has this ever happened to you? You typed a command and couldn't remember 
+whether that particular option was an "u" or an "o". cmdlinehelp to the 
+rescue!
+
 When editing a command line, press <c-o> (see also |g:cmdlinehelpMapView|) 
 to display help on the command currently being edited.
 
@@ -30,6 +34,7 @@ Contents~
         g:cmdlinehelpMapDown ..... |g:cmdlinehelpMapDown|
         g:cmdlinehelpMapUp ....... |g:cmdlinehelpMapUp|
         g:cmdlinehelpIgnore ...... |g:cmdlinehelpIgnore|
+        g:cmdlinehelpPatterns .... |g:cmdlinehelpPatterns|
         g:cmdlinehelpTags ........ |g:cmdlinehelpTags|
         g:cmdlinehelpTable ....... |g:cmdlinehelpTable|
         g:cmdlinehelpPrefixes .... |g:cmdlinehelpPrefixes|
@@ -58,8 +63,15 @@ g:cmdlinehelpMapDown           (default: '<c-pagedown>')
 g:cmdlinehelpMapUp             (default: '<c-pageup>')
 
                                                     *g:cmdlinehelpIgnore*
-g:cmdlinehelpIgnore            (default: 'sil\%[ent]\|verb\%[ose]')
+g:cmdlinehelpIgnore            (default: 'sil\%[ent]\|verb\%[ose]\|debug')
     Uninteresting stuff that should be ignored when searching for a command.
+
+                                                    *g:cmdlinehelpPatterns*
+g:cmdlinehelpPatterns
+    A dictionary of line patters for extracting the tag from the 
+    command line and format strings for formatting the tag. This is 
+    used for, e.g., the |:set| command to show help on the option but 
+    not on the command.
 
                                                     *g:cmdlinehelpTags*
 g:cmdlinehelpTags              (default: join(split(globpath(&rtp, 'doc/tags'), '\n'), ','))
