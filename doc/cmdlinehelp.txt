@@ -1,8 +1,8 @@
 *cmdlinehelp.txt*   Display help on the command in the command line
                     Author: Thomas Link, micathom at gmail com
 
-Has this ever happened to you? You typed a command and couldn't remember 
-whether that particular option was an "u" or an "o". cmdlinehelp to the 
+Has this ever happened to you? You are typing a command and cannot remember 
+whether that particular option is an "u" or an "o". cmdlinehelp to the 
 rescue!
 
 When editing a command line, press <c-o> (see also |g:cmdlinehelpMapView|) 
@@ -79,17 +79,22 @@ g:cmdlinehelpTags              (default: join(split(globpath(&rtp, 'doc/tags'), 
 
                                                     *g:cmdlinehelpTable*
 g:cmdlinehelpTable
-    A table of tags that should be displayed instead of the default 
-    tag. This only works for exact matches.
+    A table of tags (regexps to be precise) and replacement tags that 
+    should be displayed instead of the default tag.
+    
+    If the replacement starts with an asterisk, it is considered a 
+    function name that will be called with 3 arguments  
+    (commandline, cursor-pos, tag) and should return an array 
+    [new commandline, new cursor-pos].
 
                                                     *g:cmdlinehelpPrefixes*
-g:cmdlinehelpPrefixes
-    If a tag with one of these prefixes is found, that one will be 
-    used instead of the default prefix. This should make it quite easy 
-    to use nicely formatted cheat sheets without interfering with the 
-    normal vim help. Simply save your cheat sheet to ~/vimfiles/doc/, 
-    tag the entries with a prefix (e.g. "cheat::edit" for ":edit") and 
-    run |:helptags|.
+g:cmdlinehelpPrefixes          (default: ['cheat:'])
+    If a tag with one of these prefixes is found, it will be used 
+    instead of the default one. This should make it quite easy to use 
+    nicely formatted cheat sheets without interfering with normal vim 
+    help. Simply save your cheat sheet to ~/vimfiles/doc/, tag the 
+    entries with a prefix (e.g. "cheat::edit" for ":edit") and run 
+    |:helptags|.
 
                                                     *CmdLineHelpView()*
 CmdLineHelpView()

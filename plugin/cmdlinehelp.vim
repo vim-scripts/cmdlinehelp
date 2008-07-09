@@ -3,8 +3,8 @@
 " @Website:     http://www.vim.org/account/profile.php?user_id=4037
 " @License:     GPL (see http://www.gnu.org/licenses/gpl.txt)
 " @Created:     2008-07-01.
-" @Last Change: 2008-07-02.
-" @Revision:    245
+" @Last Change: 2008-07-09.
+" @Revision:    340
 " GetLatestVimScripts: 2279 0 cmdlinehelp.vim
 
 " :doc:
@@ -15,7 +15,7 @@
 if &cp || exists("loaded_cmdlinehelp")
     finish
 endif
-let loaded_cmdlinehelp = 4
+let loaded_cmdlinehelp = 5
 
 let s:save_cpo = &cpo
 set cpo&vim
@@ -52,6 +52,8 @@ if !exists('g:cmdlinehelpPatterns')
                 \ 'let\s\+&l:\zs[^=[:space:]]\+': "'%s'",
                 \ 'let\s\+&\zs[^=[:space:]]\+': "'%s'",
                 \ 'let\s\+\zs[^=[:space:]]\+': "%s",
+                \ 'call\s\+\zs[^([:space:]]\+': "%s()",
+                \ 'echo\(m\%[sg]\)\?\s\+\zs[^([:space:]]\+': "%s()",
                 \ }
 endif
 
@@ -61,27 +63,31 @@ if !exists('g:cmdlinehelpTags')
 endif
 
 if !exists('g:cmdlinehelpTable')
-    " A table of tags that should be displayed instead of the default 
-    " tag. This only works for exact matches.
+    " A table of tags (regexps to be precise) and replacement tags that 
+    " should be displayed instead of the default tag.
+    "
+    " If the replacement starts with an asterisk, it is considered a 
+    " function name that will be called with 3 arguments  
+    " (commandline, cursor-pos, tag) and should return an array 
+    " [new commandline, new cursor-pos].
     " :nodefault:
     " :read: let g:cmdlinehelpTable = {} "{{{2
     let g:cmdlinehelpTable = {
-                \ ':s': ':s_flags'
+                \ ':s\%[ubstitute]': ':s_flags',
+                \ ':tag\?!': 'tag-!',
+                \ ':Align': 'alignman',
+                \ ':AlignCtrl': 'alignman',
                 \ }
 endif
 
 if !exists('g:cmdlinehelpPrefixes')
-    " If a tag with one of these prefixes is found, that one will be 
-    " used instead of the default prefix. This should make it quite easy 
-    " to use nicely formatted cheat sheets without interfering with the 
-    " normal vim help. Simply save your cheat sheet to ~/vimfiles/doc/, 
-    " tag the entries with a prefix (e.g. "cheat::edit" for ":edit") and 
-    " run |:helptags|.
-    " :nodefault:
-    " :read: let g:cmdlinehelpPrefixes = {}   "{{{2
-    let g:cmdlinehelpPrefixes = [
-                \ 'cheat:',
-                \ ]
+    " If a tag with one of these prefixes is found, it will be used 
+    " instead of the default one. This should make it quite easy to use 
+    " nicely formatted cheat sheets without interfering with normal vim 
+    " help. Simply save your cheat sheet to ~/vimfiles/doc/, tag the 
+    " entries with a prefix (e.g. "cheat::edit" for ":edit") and run 
+    " |:helptags|.
+    let g:cmdlinehelpPrefixes = ['cheat:']  "{{{2
 endif
 
 
@@ -104,7 +110,7 @@ function! CmdLineHelpView() "{{{3
         endif
     endfor
     if !ok
-        let tag = matchstr(s:buffer, '\(\('. g:cmdlinehelpIgnore .'\)\W*\s*\)*\zs\w\+')
+        let tag = matchstr(s:buffer, '\(\('. g:cmdlinehelpIgnore .'\)\W*\s*\)*\zs\w\+!\?')
         let fmt = ':%s'
     endif
     " TLogVAR tag, fmt
@@ -114,21 +120,41 @@ function! CmdLineHelpView() "{{{3
         let &tags = g:cmdlinehelpTags
         try
             let tag = printf(fmt, tag)
-            let ok = 0
-            for prefix in g:cmdlinehelpPrefixes
-                let tag1 = prefix . tag
-                let taglist = taglist('^'. tag1 .'$')
-                if !empty(taglist)
-                    let tag = tag1
-                    let ok = 1
-                    break
+            let tag1 = s:PrefixTag(tag)
+            " TLogVAR tag1
+            if empty(tag1) && !s:TagExists(tag)
+                if tag[-1 : -1] == '!'
+                    let tagm = tag[0 : -2]
+                    let tag1 = s:PrefixTag(tagm)
+                    " TLogVAR tag1
+                    if empty(tag1)
+                        let tag1 = s:TableGet(tag, '')
+                        " TLogVAR tag1
+                        if empty(tag1)
+                            if s:TagExists(tagm)
+                                let tag1 = tagm
+                            else
+                                let tag1 = s:TableGet(tagm, '')
+                            endif
+                            " TLogVAR tag1
+                        endif
+                    endif
                 endif
-            endfor
-            if !ok
-                let tag = get(g:cmdlinehelpTable, tag, tag)
             endif
-            exec 'ptag '. tag
-            call s:NormInPreview("jzt")
+            " TLogVAR tag, tag1
+            let tag0 = tag
+            if !empty(tag1)
+                let tag = s:TableGet(tag1, tag1)
+            else
+                let tag = s:TableGet(tag, tag)
+            endif
+            if tag[0:0] == '*'
+                let [s:buffer, s:pos] = call(tag[1 : -1], [s:buffer, s:pos, tag0])
+            else
+                exec 'silent ptag '. tag
+            endif
+            " call s:NormInPreview("jzt")
+            call s:NormInPreview("zt")
             call s:InstallAutoHide()
         catch /^Vim\%((\a\+)\)\=:E426/
         finally
@@ -137,6 +163,36 @@ function! CmdLineHelpView() "{{{3
         redraw!
     endif
     call s:RestoreCmdLine()
+endf
+
+
+function! s:TableGet(tag, default) "{{{3
+    " TLogVAR a:tag, a:default
+    for [tag, repl] in items(g:cmdlinehelpTable)
+        if a:tag =~ '^'. tag .'$'
+            " TLogVAR tag, repl
+            return repl
+        endif
+    endfor
+    return a:default
+endf
+
+
+function! s:PrefixTag(tag) "{{{3
+    for prefix in g:cmdlinehelpPrefixes
+        let tag1 = prefix . a:tag
+        if s:TagExists(tag1)
+            return tag1
+            break
+        endif
+    endfor
+    return ''
+endf
+
+
+function! s:TagExists(tag) "{{{3
+    let taglist = taglist('\V\^'. a:tag .'\$')
+    return !empty(taglist)
 endf
 
 
@@ -196,7 +252,7 @@ endf
 
 
 if !hasmapto('CmdLineHelpView', 'c')
-    exec 'cnoremap '. g:cmdlinehelpMapView .' <c-\>eCmdLineHelpBuffer()<cr><c-c>:call CmdLineHelpView()<cr>'
+    exec 'cnoremap <silent> '. g:cmdlinehelpMapView .' <c-\>eCmdLineHelpBuffer()<cr><c-c>:call CmdLineHelpView()<cr>'
 end
 if !hasmapto('CmdLineHelpUp', 'c')
     exec 'cnoremap <silent> '. g:cmdlinehelpMapUp .' <c-\>eCmdLineHelpBuffer()<cr><c-c>:call CmdLineHelpUp()<cr>'
@@ -237,4 +293,11 @@ CHANGES:
 - For :set, :setlocal, :let show help on the option/variable, not the command
 - Catch e426 error.
 - Added debug to g:cmdlinehelpIgnore
+
+0.5
+- Support an optional command bang [!]
+- For :call, :echo[m] show help on the function not the command
+- g:cmdlinehelpTable may contain references to custom helper function
+- The keys in g:cmdlinehelpTable are regexps
+- Don't scroll down one line
 
